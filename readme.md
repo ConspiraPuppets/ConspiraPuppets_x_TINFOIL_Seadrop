@@ -10,6 +10,10 @@ Complete deployment and operation guide for an NFT collection that automatically
 - [Contract Architecture](#contract-architecture)
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
+- [Planning Tools](#planning-tools)
+  - [Token Distribution Calculator](#token-distribution-calculator)
+  - [Preset Configurations](#preset-configurations)
+  - [Planning Your Launch](#planning-your-launch)
 - [Deployment Process](#deployment-process)
 - [Post-Deployment Operations](#post-deployment-operations)
 - [LP Verification & Fee Collection](#lp-verification--fee-collection---complete-guide)
@@ -47,7 +51,7 @@ This system combines three smart contracts to create a complete NFT launch with 
 NFT Max Supply: 3,333
 Token Total Supply: 3,330,000,000 (3.33B)
 Distribution: 50% to NFT holders, 50% to LP
-Tokens per NFT: ~1,000,000
+Tokens per NFT: ~500,000
 Uniswap V3 Fee Tier: 0.3%
 LP Range: Full range (ticks -887220 to 887220)
 ```
@@ -88,6 +92,22 @@ You (EOA)
 ---
 
 ## ✅ Prerequisites
+
+### Project Structure
+
+```
+conspirapuppets_contract/
+├── src/
+│   ├── ConspiraPuppets.sol
+│   ├── TinfoilToken.sol
+│   └── LPManager.sol
+├── script/
+│   └── Deploy.s.sol
+├── tools/
+│   └── calculator.py          ← Token distribution calculator
+├── .env                        ← Your private key (create this)
+└── README.md
+```
 
 ### Required Tools
 ```bash
@@ -151,6 +171,230 @@ uint256 maxSupply = 3333;
 string memory tokenName = "ConspiraPuppetsToken";
 string memory tokenSymbol = "PUPPET";
 uint256 totalTokenSupply = 3_330_000_000 * 10**18;
+```
+
+---
+
+## 🧮 Planning Tools
+
+### Token Distribution Calculator
+
+**Location:** `tools/calculator.py`
+
+**Setup:**
+```bash
+# Create tools directory if it doesn't exist
+mkdir -p tools
+
+# The calculator.py file should be in your project:
+# ~/Downloads/conspirapuppets_contract/tools/calculator.py
+
+# Make it executable (optional)
+chmod +x tools/calculator.py
+
+# Or run directly with python3
+cd tools
+python3 calculator.py presets
+```
+
+A Python tool to help you plan your tokenomics before deployment. Calculate token distribution, estimate market caps, and get NFT pricing recommendations.
+
+**Requirements:** Python 3.6+ (usually pre-installed on Mac/Linux)
+
+#### Features
+- Calculate tokens per NFT based on supply and distribution
+- Estimate market cap at different token prices
+- NFT pricing recommendations with LP value calculations
+- View preset configurations for inspiration
+- Generate Solidity constructor parameters
+
+---
+
+#### Basic Usage
+
+**Calculate your distribution:**
+```bash
+cd tools
+python3 calculator.py <max_nfts> <total_tokens> <nft_holder_percent>
+
+# Example: 10K NFTs, 1B tokens, 50% to holders
+python3 calculator.py 10000 1000000000 50
+```
+
+**View preset configurations:**
+```bash
+python3 calculator.py presets
+```
+
+---
+
+#### Example Output
+
+**Input:** 3,333 NFTs | 3.33B tokens | 50% to holders
+
+```
+📊 INPUTS:
+   Max NFT Supply: 3,333
+   Total Token Supply: 3,330,000,000
+
+📈 DISTRIBUTION:
+   NFT Holders: 50%
+   Liquidity Pool: 50% (automatic)
+
+💰 AMOUNTS:
+   Each NFT = 999,999 tokens (~1M)
+   Total to NFT Holders = 1,665,000,000 tokens (50%)
+   LP Receives = 1,665,000,000 tokens (50%)
+
+💵 MARKET CAP ESTIMATES:
+   At $0.0001/token: $333,000
+   At $0.0010/token: $3,330,000
+   At $0.0100/token: $33,300,000
+
+🎨 NFT PRICING RECOMMENDATIONS:
+   At 0.00666 ETH per NFT:
+      Total Revenue: 22.2 ETH ($66,600)
+      LP Gets: 11.1 ETH + 1,665,000,000 tokens
+      Estimated Initial Token Price: $0.000020
+      Initial Market Cap: $66,600
+```
+
+---
+
+#### Preset Configurations
+
+**1. Original ConspiraPuppets**
+```
+Supply: 3,333 NFTs | 3,330,000,000 tokens
+Distribution: 50% NFTs | 50% LP
+Each NFT: ~1,000,000 tokens
+```
+
+**2. 50/50 Split (Balanced)**
+```
+Supply: 10,000 NFTs | 1,000,000,000 tokens
+Distribution: 50% NFTs | 50% LP
+Each NFT: 50,000 tokens
+```
+
+**3. 60/40 Split (Collector Focused)**
+```
+Supply: 10,000 NFTs | 1,000,000,000 tokens
+Distribution: 60% NFTs | 40% LP
+Each NFT: 60,000 tokens
+More tokens to holders, less LP liquidity
+```
+
+**4. 40/60 Split (High Liquidity)**
+```
+Supply: 5,000 NFTs | 500,000,000 tokens
+Distribution: 40% NFTs | 60% LP
+Each NFT: 40,000 tokens
+More LP liquidity, fewer tokens per holder
+```
+
+---
+
+#### Using Calculator Results in Deploy.s.sol
+
+**The calculator gives you the exact values to use:**
+
+```solidity
+// From calculator output:
+uint256 maxSupply = 3333;                           // Max NFT Supply
+uint256 totalTokenSupply = 3_330_000_000 * 10**18; // Total tokens
+uint256 tokensPerNFT = 999_999 * 10**18;           // Each NFT amount
+
+// Calculate distribution (50/50 split)
+uint256 lpTokenAmount = totalTokenSupply / 2;       // 1.665B to LP
+```
+
+**Or let the contract calculate it automatically:**
+```solidity
+uint256 tokensPerNFT = (totalTokenSupply / 2) / maxSupply;
+uint256 lpTokenAmount = totalTokenSupply / 2;
+```
+
+---
+
+#### Pro Tips for Token Distribution
+
+**Conservative Approach (40/60):**
+- 40% to NFT holders
+- 60% to LP
+- Better liquidity = less price volatility
+- Good for long-term stability
+
+**Balanced Approach (50/50):**
+- 50% to NFT holders
+- 50% to LP
+- Standard distribution
+- Good for most projects
+
+**Holder-Focused (60/40):**
+- 60% to NFT holders
+- 40% to LP
+- Rewards collectors more
+- May have higher volatility
+
+**Getting Your Tokens as Creator:**
+```
+Don't add "owner allocation" to contract!
+Instead: Airdrop yourself NFTs
+
+Example:
+- Airdrop yourself 100 NFTs
+- If each NFT = 50,000 tokens
+- You get: 5,000,000 tokens
+- Simple, transparent, same mechanism
+```
+
+---
+
+#### Planning Your Launch
+
+**Use the calculator to answer:**
+
+1. **How many NFTs?**
+   - More NFTs = smaller amount per holder
+   - Fewer NFTs = larger amount per holder
+
+2. **What token supply?**
+   - Higher supply = lower per-token price
+   - Lower supply = higher per-token price
+
+3. **What split percentage?**
+   - More to holders = reward collectors
+   - More to LP = better trading liquidity
+
+4. **What mint price?**
+   - Calculator shows LP value at different prices
+   - Example: 0.01 ETH × 10K NFTs = 50 ETH to LP
+
+5. **Target market cap?**
+   - Calculator shows estimates at different prices
+   - Work backwards from your target
+
+---
+
+#### Example Planning Session
+
+**Goal:** Launch with ~$100K market cap
+
+```bash
+# Try different configurations
+python3 calculator.py 10000 1000000000 50
+
+# Check market cap at different prices
+# At $0.0001/token = $100K ✅ Target hit!
+
+# Check LP value with 0.01 ETH mint price
+# 10K × 0.01 ETH = 100 ETH revenue
+# LP gets 50 ETH = ~$150K in liquidity
+# Initial price = $150K / 500M tokens = $0.0003
+
+# Adjust based on your goals
+python3 calculator.py 5000 500000000 50
 ```
 
 ---
@@ -1397,23 +1641,50 @@ Before production launch, test everything on Base Sepolia testnet:
 
 ## 📈 Production Launch Checklist
 
-- [ ] Update Deploy.s.sol with production values
+### Pre-Deployment Planning
+- [ ] **Use calculator.py to plan tokenomics** (tools/calculator.py)
+- [ ] Decide: NFT supply, token supply, distribution %
+- [ ] Calculate: Tokens per NFT, LP amount
+- [ ] Plan: Mint price and expected revenue
+- [ ] Estimate: Target market cap and initial price
+- [ ] Review preset configurations for ideas
+
+### Deployment Phase
+- [ ] Update Deploy.s.sol with production values (use calculator output)
 - [ ] Deploy to Base mainnet
-- [ ] Save all contract addresses
+- [ ] Save all contract addresses (TOKEN, NFT, LP_MANAGER)
 - [ ] Verify all contracts on BaseScan
 - [ ] **🚨 CRITICAL: Configure SeaDrop payout address** (Step 4)
-- [ ] Fund NFT contract (use expected mint revenue OR 0.1 ETH for testing)
-- [ ] Configure drop in OpenSea Studio
+- [ ] Fund NFT contract (expected mint revenue OR 0.1 ETH minimum)
 - [ ] **Double-check payout address is set before announcing!**
+
+### Launch Phase
+- [ ] Configure drop in OpenSea Studio (price, times, limits)
+- [ ] Test mint with your wallet (confirm tokens distributed)
 - [ ] Announce drop to community
-- [ ] Monitor mint progress
+- [ ] Monitor mint progress (track sales and distribution)
+
+### Post-Mint Phase
 - [ ] When sold out, call `setMintCompleted()`
-- [ ] Wait 5 minutes, then `createLP()`
-- [ ] Verify LP creation successful
-- [ ] Withdraw operational funds
-- [ ] Announce trading is live
-- [ ] Monitor pool activity
-- [ ] Set fee collection schedule
+- [ ] Wait 5 minutes (or use createLPImmediate)
+- [ ] Call `createLP()` - verify success
+- [ ] Verify LP creation (check lpCreated, positionTokenId, pool address)
+- [ ] Verify trading is enabled
+- [ ] Withdraw operational funds (get back 50% of ETH)
+
+### Going Live
+- [ ] Find pool on Uniswap (~10-15 min for indexing)
+- [ ] Announce trading is live to community
+- [ ] Do test trades to verify pool works
+- [ ] Monitor pool activity and volume
+- [ ] Set up fee collection schedule (weekly/monthly)
+
+### Ongoing Operations
+- [ ] Collect fees regularly (when fees > gas costs)
+- [ ] Track earnings in spreadsheet
+- [ ] Monitor pool health on Uniswap
+- [ ] Engage with community
+- [ ] Consider token utility/use cases
 
 ---
 
@@ -1438,16 +1709,18 @@ Before production launch, test everything on Base Sepolia testnet:
 
 ## 💡 Tips for Success
 
-1. **Set Payout Address FIRST:** Do Step 4 before ANY mints happen!
-2. **Test Everything:** Deploy to Sepolia testnet first
-3. **Use Enough ETH:** 0.1 ETH minimum for testing
-4. **Save Addresses:** Keep contract addresses in multiple places
-5. **Monitor Closely:** Watch mint progress and LP creation
-6. **Communicate:** Keep community updated on launch progress
-7. **Be Patient:** Uniswap indexing takes 10-15 minutes
-8. **Collect Fees Regularly:** Don't let fees accumulate too long
-9. **Document Everything:** Keep notes on what you did
-10. **Double-Check Payout:** Verify payout address is set before announcing mint!
+1. **Plan with Calculator:** Use tools/calculator.py BEFORE deploying to finalize tokenomics
+2. **Set Payout Address FIRST:** Do Step 4 before ANY mints happen!
+3. **Test Everything:** Deploy to Sepolia testnet first
+4. **Use Enough ETH:** 0.1 ETH minimum for testing, full revenue for production
+5. **Save Addresses:** Keep contract addresses in multiple places
+6. **Monitor Closely:** Watch mint progress and LP creation
+7. **Communicate:** Keep community updated on launch progress
+8. **Be Patient:** Uniswap indexing takes 10-15 minutes
+9. **Collect Fees Regularly:** Don't let fees accumulate too long (monthly recommended)
+10. **Document Everything:** Keep notes on what you did
+11. **Double-Check Payout:** Verify payout address is set before announcing mint!
+12. **Review Calculator Output:** Market cap and pricing estimates help set expectations
 
 ---
 
@@ -1480,16 +1753,29 @@ Before production launch, test everything on Base Sepolia testnet:
 
 If you encounter issues:
 
-1. **Check Troubleshooting Section:** Most common issues are documented with solutions
-2. **Verify Addresses:** Ensure contract addresses are saved and correct
-3. **Check Transaction Status:** View on BaseScan to see if transactions succeeded
-4. **Verify Funding:** Ensure you're using 0.1+ ETH for LP creation
-5. **Wait for Rate Limits:** If hitting rate limits, wait 5-10 minutes
-6. **Check Fee Collection:** Use Quick Reference commands to verify each step
-7. **View Position on Uniswap:** Confirm pool and fees visually
-8. **Test on Sepolia First:** Always test major operations on testnet
+1. **Planning Phase:**
+   - Use tools/calculator.py to validate your tokenomics
+   - Check preset configurations for examples
+   - Ensure your numbers make sense before deploying
+
+2. **Check Troubleshooting Section:** Most common issues are documented with solutions
+
+3. **Verify Addresses:** Ensure contract addresses are saved and correct
+
+4. **Check Transaction Status:** View on BaseScan to see if transactions succeeded
+
+5. **Verify Funding:** Ensure you're using 0.1+ ETH for LP creation
+
+6. **Wait for Rate Limits:** If hitting rate limits, wait 5-10 minutes
+
+7. **Check Fee Collection:** Use Quick Reference commands to verify each step
+
+8. **View Position on Uniswap:** Confirm pool and fees visually
+
+9. **Test on Sepolia First:** Always test major operations on testnet
 
 **Common Issues Quick Links:**
+- Planning tokenomics → Use tools/calculator.py
 - Payout address not set → See Step 4 in Deployment
 - Price slippage error → See Troubleshooting
 - Fee collection failing → See Fee Collection Common Mistakes
@@ -1504,6 +1790,15 @@ MIT License - Use freely, deploy responsibly
 ---
 
 ## 📖 Quick Reference
+
+### Planning & Configuration
+
+**Use Calculator:**
+```bash
+cd tools
+python3 calculator.py 10000 1000000000 50      # Custom config
+python3 calculator.py presets                  # View presets
+```
 
 ### Essential Commands Cheat Sheet
 
@@ -1554,13 +1849,29 @@ cast send $NFT 'recoverLPManagerTokens(address)' $TOKEN --private-key $PK --rpc-
 
 You now have a complete, production-ready NFT-to-token system with permanent Uniswap V3 liquidity!
 
-**Built with:**
-- ✅ Automatic token distribution
-- ✅ Permanent liquidity lock
-- ✅ Owner-controlled fee collection
+**Your Complete System Includes:**
+- ✅ Token distribution calculator for planning
+- ✅ Automatic token distribution on mint
+- ✅ Permanent liquidity lock on Uniswap V3
+- ✅ Owner-controlled fee collection (3-step process)
 - ✅ Emergency recovery functions
 - ✅ Dynamic price calculation
-- ✅ Thoroughly tested
+- ✅ Comprehensive documentation
+- ✅ Testing checklists and workflows
+- ✅ Thoroughly tested on Base mainnet
+
+**Built with:**
+- ✅ Smart contract best practices
+- ✅ Proven Uniswap V3 integration
+- ✅ Transparent tokenomics
+- ✅ No governance complexity
+- ✅ Clear upgrade path
+
+**Ready to use:**
+- 📊 Plan with calculator.py
+- 🚀 Deploy to Base
+- 🎨 Launch your collection
+- 💰 Collect trading fees forever
 
 **Deploy with confidence!** 🚀
 
@@ -1571,6 +1882,10 @@ You now have a complete, production-ready NFT-to-token system with permanent Uni
 *System Version: 1.0*
 
 **Version History:**
-- v1.0 (Nov 2025): Initial release with comprehensive LP verification and fee collection guide
-- Includes: Full deployment workflow, fee collection testing, troubleshooting, and best practices
-- Tested with: 0.05 ETH LP, dynamic pricing, 3-step fee collection process
+- v1.0 (Nov 2025): Initial release with comprehensive documentation
+  - Complete deployment workflow
+  - LP verification and fee collection guide (3-step process)
+  - Token distribution calculator (tools/calculator.py)
+  - Troubleshooting guides and best practices
+  - Testing checklists and production workflows
+- Tested with: 0.05 ETH LP, dynamic pricing, Uniswap V3 full-range positions
