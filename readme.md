@@ -51,7 +51,7 @@ This system combines three smart contracts to create a complete NFT launch with 
 NFT Max Supply: 3,333
 Token Total Supply: 3,333,333,333 (3.33B)
 Distribution: 50% to NFT holders, 50% to LP
-Tokens per NFT: ~500,000
+Tokens per NFT: ~500,050.005
 Uniswap V3 Fee Tier: 0.3%
 LP Range: Full range (ticks -887220 to 887220)
 ```
