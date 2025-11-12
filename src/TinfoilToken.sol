@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/access/Ownable.sol";
+
+contract TinfoilToken is ERC20, Ownable {
+    uint256 public immutable MAX_SUPPLY;
+    
+    address public nftContract;
+    uint256 public totalBurned = 0;
+    bool public tradingEnabled = false;
+    
+    mapping(address => bool) public transferWhitelist;
+    
+    event TokensBurned(uint256 amount);
+    event NFTContractSet(address indexed nftContract);
+    event TradingEnabled();
+    event TransferWhitelistUpdated(address indexed account, bool allowed);
+
+    /**
+     * @param name Token name (e.g., "Tinfoil")
+     * @param symbol Token symbol (e.g., "TINFOIL")
+     * @param maxSupply Maximum token supply in wei (e.g., 1_000_000_000 * 10**18 for 1B)
+     */
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint256 maxSupply
+    ) ERC20(name, symbol) {
+        require(maxSupply > 0, "Max supply must be > 0");
+        MAX_SUPPLY = maxSupply;
+    }
+
+    modifier onlyNFTContract() {
+        require(msg.sender == nftContract, "Only NFT contract can call this");
+        require(nftContract != address(0), "NFT contract not set");
+        _;
+    }
+    
+    modifier onlyNFTOrOwner() {
+        require(
+            msg.sender == nftContract || msg.sender == owner(),
+            "Only NFT contract or owner can call this"
+        );
+        _;
+    }
+
+    function setNFTContract(address _nftContract) external onlyOwner {
+        require(nftContract == address(0), "NFT contract already set");
+        require(_nftContract != address(0), "Invalid NFT contract address");
+        require(totalSupply() == 0, "Cannot set NFT contract after minting started");
+        nftContract = _nftContract;
+        emit NFTContractSet(_nftContract);
+    }
+
+    function setTransferWhitelist(address account, bool allowed) public onlyNFTOrOwner {
+        require(account != address(0), "Invalid address");
+        transferWhitelist[account] = allowed;
+        emit TransferWhitelistUpdated(account, allowed);
+    }
+
+    function setTransferWhitelistBatch(address[] calldata accounts, bool allowed) external onlyOwner {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            require(accounts[i] != address(0), "Invalid address");
+            transferWhitelist[accounts[i]] = allowed;
+            emit TransferWhitelistUpdated(accounts[i], allowed);
+        }
+    }
+
+    function mint(address to, uint256 amount) external onlyNFTContract {
+        require(to != address(0), "Cannot mint to zero address");
+        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
+        _mint(to, amount);
+    }
+
+    function enableTrading() external onlyNFTContract {
+        require(!tradingEnabled, "Trading already enabled");
+        tradingEnabled = true;
+        emit TradingEnabled();
+    }
+
+    function burn(uint256 amount) external {
+        require(amount > 0, "Cannot burn 0 tokens");
+        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+        
+        _burn(msg.sender, amount);
+        totalBurned += amount;
+        
+        emit TokensBurned(amount);
+    }
+
+    function transfer(address to, uint256 amount) public virtual override returns (bool) {
+        require(
+            tradingEnabled || 
+            transferWhitelist[msg.sender] || 
+            transferWhitelist[to],
+            "Trading not enabled yet - wait for mint completion"
+        );
+        return super.transfer(to, amount);
+    }
+
+    function transferFrom(address from, address to, uint256 amount) public virtual override returns (bool) {
+        require(
+            tradingEnabled || 
+            transferWhitelist[msg.sender] ||
+            transferWhitelist[from] ||
+            transferWhitelist[to],
+            "Trading not enabled yet - wait for mint completion"
+        );
+        return super.transferFrom(from, to, amount);
+    }
+
+    function circulatingSupply() external view returns (uint256) {
+        return totalSupply();
+    }
+
+    function maxSupplyReached() external view returns (bool) {
+        return totalSupply() == MAX_SUPPLY;
+    }
+
+    function burnPercentage() external view returns (uint256) {
+        uint256 totalMinted = totalSupply() + totalBurned;
+        if (totalMinted == 0) return 0;
+        return (totalBurned * 100) / totalMinted;
+    }
+
+    function getTokenInfo() external view returns (
+        uint256 _totalSupply,
+        uint256 _maxSupply,
+        uint256 _totalBurned,
+        uint256 _circulatingSupply,
+        bool _tradingEnabled,
+        bool _maxSupplyReached
+    ) {
+        return (
+            totalSupply(),
+            MAX_SUPPLY,
+            totalBurned,
+            totalSupply(),
+            tradingEnabled,
+            totalSupply() == MAX_SUPPLY
+        );
+    }
+
+    function getTradingStatus() external view returns (
+        bool _tradingEnabled,
+        string memory _statusMessage
+    ) {
+        if (tradingEnabled) {
+            return (true, "Trading is live!");
+        } else {
+            return (false, "Trading disabled until NFT collection sells out");
+        }
+    }
+}
