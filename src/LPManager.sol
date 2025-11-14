@@ -107,7 +107,7 @@ contract LPManager is Ownable, ReentrancyGuard {
     IUniswapV3Factory public immutable factory;
     
     address public constant WETH = 0x4200000000000000000000000000000000000006;
-    uint24 public constant FEE_TIER = 3000; // 0.3%
+    uint24 public constant FEE_TIER = 10000; // 0.3%
     int24 public constant TICK_LOWER = -887220;
     int24 public constant TICK_UPPER = 887220;
     
