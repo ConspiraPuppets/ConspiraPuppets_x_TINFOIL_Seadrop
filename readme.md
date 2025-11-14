@@ -49,9 +49,9 @@ This system combines three smart contracts to create a complete NFT launch with 
 ### Default Configuration
 ```
 NFT Max Supply: 3,333
-Token Total Supply: 3,333,333,333 (3.33B)
+Token Total Supply: 3,330,000,000 (3.33B)
 Distribution: 50% to NFT holders, 50% to LP
-Tokens per NFT: ~500,050.005
+Tokens per NFT: ~500,000
 Uniswap V3 Fee Tier: 0.3%
 LP Range: Full range (ticks -887220 to 887220)
 ```
@@ -711,7 +711,7 @@ echo "https://basescan.org/address/$POOL"
 
 #### How Uniswap V3 Fees Work
 
-Every trade in your pool generates fees (0.3% of swap amount):
+Every trade in your pool generates fees (1% of swap amount):
 - **Someone buys your token:** Fee paid in WETH (you earn WETH)
 - **Someone sells your token:** Fee paid in your token (you earn tokens)
 
@@ -729,13 +729,13 @@ To test fee collection, you need some trading activity:
 1. Go to https://app.uniswap.org/swap
 2. Connect your wallet
 3. Swap 1,000-2,000 tokens → ETH
-4. Fees generated: ~3-6 tokens + ~0.00003 WETH
+4. Fees generated (1%): ~10-20 tokens + ~0.0001 WETH
 
 **Option B: Buy some tokens back**
 1. Go to https://app.uniswap.org/swap
 2. Swap ETH → Your tokens
 3. Buy 1,000 tokens
-4. Fees generated: ~0.00003 WETH + ~3 tokens
+4. Fees generated (1%): ~0.0001 WETH + ~10 tokens
 
 **⏰ Wait 2-3 minutes after trading for fees to settle!**
 
