@@ -122,8 +122,8 @@ contract ConspiraPuppets is ERC721SeaDrop {
         uint256 totalEth = address(this).balance;
         require(totalEth > 0, "No ETH in contract");
         
-        uint256 lpEthAmount = totalEth / 2;
-        operationalFunds = totalEth - lpEthAmount;
+        uint256 lpEthAmount = totalEth;  // 100% to LP
+        operationalFunds = 0;            // No operational funds
         
         emit FundsAllocated(lpEthAmount, operationalFunds);
         
@@ -149,7 +149,7 @@ contract ConspiraPuppets is ERC721SeaDrop {
         }
     }
     
-    function createLPImmediate() external nonReentrant {
+    function createLPImmediate() external onlyOwner nonReentrant {
         require(mintCompleted, "Mint not completed yet");
         require(lpManager != address(0), "LP Manager not set");
         require(!ILPManager(lpManager).lpCreated(), "LP already created");
@@ -157,8 +157,8 @@ contract ConspiraPuppets is ERC721SeaDrop {
         uint256 totalEth = address(this).balance;
         require(totalEth > 0, "No ETH in contract");
         
-        uint256 lpEthAmount = totalEth / 2;
-        operationalFunds = totalEth - lpEthAmount;
+        uint256 lpEthAmount = totalEth;  // 100% to LP
+        operationalFunds = 0;            // No operational funds
         
         emit FundsAllocated(lpEthAmount, operationalFunds);
         
