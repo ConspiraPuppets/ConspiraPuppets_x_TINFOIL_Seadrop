@@ -15,7 +15,7 @@ import "../src/LPManager.sol";
  * 
  * UNISWAP V3 BENEFITS:
  * ✅ No governance approval needed for fee collection
- * ✅ 0.3% fee tier for optimal trading
+ * ✅ 1% fee tier for optimal trading
  * ✅ Position permanently locked (can't be rugged)
  * ✅ Fees collectible immediately after LP creation
  */
@@ -148,7 +148,7 @@ contract DeployScript is Script {
         console.log("");
         console.log("UNISWAP V3 BENEFITS:");
         console.log("  - No governance approval needed for fee collection");
-        console.log("  - 0.3% fee tier for optimal trading");
+        console.log("  - 1% fee tier for optimal trading");
         console.log("  - Position permanently locked");
         console.log("  - Owner can collect fees anytime with collectFees()");
         
@@ -298,7 +298,7 @@ contract DeployScript is Script {
         console.log("Factory:", UNISWAP_FACTORY);
         console.log("Router:", UNISWAP_ROUTER);
         console.log("WETH:", WETH);
-        console.log("Fee Tier: 0.3%");
+        console.log("Fee Tier: 1%");
         console.log("Position Range: Full (ticks -887220 to 887220)");
         console.log("");
         console.log("=================================================================");
@@ -345,7 +345,7 @@ contract DeployScript is Script {
         console.log("  - Owner can call collectFees() immediately");
         console.log("  - Fees available IMMEDIATELY after LP creation");
         console.log("  - Position locked forever (can't be rugged)");
-        console.log("  - 0.3% fee tier = optimal for most tokens");
+        console.log("  - 1% fee tier = optimal for most tokens");
         console.log("=================================================================");
     }
 }
