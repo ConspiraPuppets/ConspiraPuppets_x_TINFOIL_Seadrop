@@ -10,7 +10,6 @@ Complete deployment and operation guide for an NFT collection that automatically
 - [Contract Architecture](#contract-architecture)
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
-- [Adjusting Operational Fees](#adjusting-operational-fees-fund-split)
 - [Planning Tools](#planning-tools)
   - [Token Distribution Calculator](#token-distribution-calculator)
   - [Preset Configurations](#preset-configurations)
@@ -44,7 +43,7 @@ This system combines three smart contracts to create a complete NFT launch with 
 - **Auto-Complete Trigger**: When max NFT supply is reached, system automatically prepares for LP creation
 - **Permanent Liquidity Lock**: Uniswap V3 position is locked forever (cannot be withdrawn)
 - **Owner Fee Collection**: Only the contract owner can collect trading fees from the LP
-- **50/50 Fund Split**: Half of collected ETH goes to LP, half remains as operational funds (customizable - see [Adjusting Operational Fees](#adjusting-operational-fees-fund-split))
+- **50/50 Fund Split**: Half of collected ETH goes to LP, half remains as operational funds
 - **Emergency Recovery**: Built-in functions to recover stuck funds if LP creation fails
 
 ### Default Configuration
@@ -53,7 +52,7 @@ NFT Max Supply: 3,333
 Token Total Supply: 3,330,000,000 (3.33B)
 Distribution: 50% to NFT holders, 50% to LP
 Tokens per NFT: ~500,000
-Uniswap V3 Fee Tier: 0.3%
+Uniswap V3 Fee Tier: 1%
 LP Range: Full range (ticks -887220 to 887220)
 ```
 
@@ -173,100 +172,6 @@ string memory tokenName = "ConspiraPuppetsToken";
 string memory tokenSymbol = "PUPPET";
 uint256 totalTokenSupply = 3_330_000_000 * 10**18;
 ```
-
----
-
-## 💰 Adjusting Operational Fees (Fund Split)
-
-By default, the contract splits mint revenue **50/50** between LP creation and operational funds. You can customize this split before deployment to match your strategy.
-
-### Default Behavior (50/50 Split)
-```solidity
-uint256 lpEthAmount = totalEth / 2;        // 50% to LP
-operationalFunds = totalEth - lpEthAmount;  // 50% operational
-```
-
-### How to Change the Split
-
-**Location:** `src/ConspiraPuppets.sol`  
-**Functions to modify:** `createLP()` and `createLPImmediate()`
-
-You need to update the fund allocation in **two places**:
-1. **Lines 125-126** in `createLP()` function
-2. **Lines 160-161** in `createLPImmediate()` function
-
-### Common Configurations
-
-#### Option 1: 75% to LP, 25% Operational
-```solidity
-// Replace lines 125-126 and 160-161 with:
-uint256 lpEthAmount = (totalEth * 75) / 100;  // 75% to LP
-operationalFunds = totalEth - lpEthAmount;     // 25% operational
-```
-**Best for:** Maximizing initial liquidity while keeping some funds for operations
-
-#### Option 2: 100% to LP, No Operational Funds
-```solidity
-// Replace lines 125-126 and 160-161 with:
-uint256 lpEthAmount = totalEth;  // 100% to LP
-operationalFunds = 0;             // No operational funds
-```
-**Best for:** Maximum liquidity, planning to monetize through LP trading fees only
-
-#### Option 3: 25% to LP, 75% Operational
-```solidity
-// Replace lines 125-126 and 160-161 with:
-uint256 lpEthAmount = (totalEth * 25) / 100;  // 25% to LP
-operationalFunds = totalEth - lpEthAmount;     // 75% operational
-```
-**Best for:** Prioritizing operational funds while maintaining minimal liquidity
-
-### What Happens with Each Choice
-
-| Split | LP Liquidity | Operational Funds | Best For |
-|-------|--------------|-------------------|----------|
-| **50/50** (default) | Medium | Medium | Balanced approach |
-| **75/25** | High | Low | Strong liquidity focus |
-| **100/0** | Maximum | None | Pure LP strategy |
-| **25/75** | Low | High | Operations focus |
-
-### Important Notes
-
-**If you choose 100% to LP:**
-- `withdrawOperationalFunds()` will always revert (no funds to withdraw)
-- You monetize entirely through LP trading fees
-- No immediate cash-out after mint completes
-- Maximum initial liquidity for token
-
-**If you keep operational funds:**
-- You can withdraw them immediately after LP creation using `withdrawOperationalFunds()`
-- Reduces initial LP depth but gives you working capital
-- Useful for marketing, development, or operations
-
-**LP Trading Fees:** Regardless of the split you choose, you'll collect 1% fees on all trading volume through the LP position. For example, $1M in trading volume = $10,000 in fees.
-
-### Testing Your Changes
-
-After modifying the split:
-1. Deploy to testnet first
-2. Complete a test mint
-3. Call `createLP()` 
-4. Verify the split using:
-   ```bash
-   cast call $NFT "operationalFunds()" --rpc-url base
-   cast balance $LP_MANAGER --rpc-url base
-   ```
-5. Check that the amounts match your intended split
-
-### Recommendation
-
-**For most projects:** Keep the default 50/50 split
-- Provides balanced liquidity
-- Gives you operational runway
-- Still captures LP fees for long-term revenue
-- Proven strategy from successful launches
-
-**For 100% LP:** Only choose this if you're committed to building long-term value through trading volume and don't need immediate operational funds.
 
 ---
 
@@ -1265,24 +1170,24 @@ cast call $TOKEN "balanceOf(address)" YOUR_WALLET --rpc-url base
 #### How Fees Are Calculated
 
 ```
-Every trade pays 0.3% fee to the pool:
+Every trade pays 1% fee to the pool:
 
 Example 1 - Someone buys your token:
 - Trader swaps: 0.01 ETH → tokens
 - Pool receives: 0.01 WETH
-- Fee (0.3%): 0.00003 WETH
+- Fee (1%): 0.00003 WETH
 - Your share: 0.00003 WETH (100% - you're only LP!)
 
 Example 2 - Someone sells your token:
 - Trader swaps: 10,000 tokens → ETH
 - Pool receives: 10,000 tokens
-- Fee (0.3%): 30 tokens
-- Your share: 30 tokens (100% - you're only LP!)
+- Fee (1%): 100 tokens
+- Your share: 100 tokens (100% - you're only LP!)
 
 Example 3 - High volume day:
 - 100 trades totaling $10,000 volume
-- Total fees: $30 (0.3% of $10,000)
-- Your share: $30 (100% - you're only LP!)
+- Total fees: $100 (1% of $10,000)
+- Your share: $100 (100% - you're only LP!)
 ```
 
 #### You Own 100% of All Fees
